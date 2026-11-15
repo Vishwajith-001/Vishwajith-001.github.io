@@ -1,7 +1,6 @@
 // ================= PROJECT DATA =================
-// Local photos live in assets/. Projects without their own photo use free Unsplash images.
-const unsplash = (id, w = 800) =>
-  `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&q=80`;
+// Project photos live in images/projects/<project>/ (older ones in assets/).
+// A project without a photo shows a plain placeholder instead of a stock image.
 
 const CATEGORY_LABELS = {
   automation: "Automation",
@@ -127,6 +126,12 @@ const allProjects = [
       "Live 3D radar display from an indoor test: a tracked person labelled Human-like 86% at 4 m range, with a red DETECTED banner and the radar at the origin",
     short:
       "Research prototype that uses a 77 GHz mmWave radar at a railway bend to detect and track moving objects, so an approaching train can be warned about elephants it cannot see around the curve.",
+    // Result tiles shown only at the top of the Details popup (the card itself stays without tiles)
+    popupStats: [
+      { value: "20% → 0%", label: "false alarms, empty room (indoor test)" },
+      { value: "28% → ~3%", label: "ghost detections, one person walking" },
+      { value: "≈ 91–93%", label: "detection walking toward the radar, unseen recordings" },
+    ],
     gallery: [
       {
         src: "images/projects/elephant-radar/radar-pipeline-3d.jpg",
@@ -623,7 +628,7 @@ const allProjects = [
     title: "Line Following Robot",
     hidden: true,
     categories: ["robotics", "embedded"],
-    image: unsplash("1553406830-ef2513450d76"),
+    // No photo yet: add image (and imageAlt) before showing this project again
     short: "Arduino-based autonomous robot tuned for stable path tracking through curves.",
     description:
       "A sensor-based autonomous robot that follows a line accurately. I optimised the control logic for motion stability and smooth curve navigation.",
@@ -660,8 +665,6 @@ const projects = allProjects.filter((p) => !p.hidden);
 const projectCount = document.getElementById("projectCount");
 if (projectCount) projectCount.textContent = projects.length >= 10 ? "10+" : String(projects.length);
 
-const FALLBACK = unsplash("1592659762303-90081d34b277");
-
 // ================= RENDER PROJECTS =================
 const grid = document.getElementById("projectsGrid");
 
@@ -669,9 +672,14 @@ const grid = document.getElementById("projectsGrid");
 const linkHTML = (l) =>
   `<a href="${l.url}" target="_blank" rel="noopener noreferrer"><i class="${l.icon.includes(" ") ? l.icon : `fa-solid ${l.icon}`}" aria-hidden="true"></i> ${l.label}</a>`;
 
-// Gallery entries may be plain paths or { src, caption, alt } objects
+// Gallery entries may be plain paths or { src, caption, alt } objects; a photo without
+// its own alt text falls back to the project's image alt, then its title
 const galleryOf = (p) =>
-  (p.gallery || []).map((g) => (typeof g === "string" ? { src: g, caption: "", alt: p.title } : g));
+  (p.gallery || []).map((g) =>
+    typeof g === "string"
+      ? { src: g, caption: "", alt: p.imageAlt || p.title }
+      : { ...g, alt: g.alt || p.imageAlt || p.title }
+  );
 
 grid.innerHTML = projects
   .map((p, i) => {
@@ -679,10 +687,10 @@ grid.innerHTML = projects
     const photos = galleryOf(p).length;
     return `
     <article${p.id ? ` id="project-${p.id}"` : ""} class="project-card reveal${p.featured ? " featured" : ""}" data-category="${p.categories.join(" ")}">
-      <div class="card-img${p.fit === "contain" ? " card-img-contain" : ""}"${p.fit === "contain" ? ` style="--card-bg:url('${p.image}')"` : ""}>
-        <button class="card-img-btn details-btn" data-index="${i}" data-view="photos" aria-label="View ${photos > 1 ? `${photos} photos` : "photo"} of ${p.title}">
+      <div class="card-img${p.fit === "contain" ? " card-img-contain" : ""}${p.image ? "" : " card-img-none"}"${p.fit === "contain" ? ` style="--card-bg:url('${p.image}')"` : ""}>
+        ${p.image ? `<button class="card-img-btn details-btn" data-index="${i}" data-view="photos" aria-label="View ${photos > 1 ? `${photos} photos` : "photo"} of ${p.title}">
           <img src="${p.image}" alt="${p.imageAlt || p.title}" loading="lazy" style="${imgStyle}" />
-        </button>
+        </button>` : ""}
         ${p.badge ? `<span class="card-badge">${p.badge}</span>` : ""}
         ${photos > 1 ? `<button class="card-photos details-btn" data-index="${i}" data-view="photos" aria-label="View ${photos} photos of ${p.title}"><i class="fa-regular fa-images" aria-hidden="true"></i> ${photos} photos</button>` : ""}
       </div>
@@ -703,9 +711,11 @@ grid.innerHTML = projects
   })
   .join("");
 
-document.querySelectorAll("img").forEach((el) => {
+// A card photo that fails to load is swapped for the plain placeholder (no stock image)
+grid.querySelectorAll(".card-img img").forEach((el) => {
   el.addEventListener("error", () => {
-    if (el.src !== FALLBACK) el.src = FALLBACK;
+    el.hidden = true;
+    el.closest(".card-img").classList.add("card-img-none");
   });
 });
 
@@ -741,7 +751,6 @@ const pageRegions = ["navbar", "main", "backToTop"].map((id) => document.getElem
 pageRegions.push(document.querySelector(".footer"), document.querySelector(".skip-link"));
 let lastFocused = null;
 
-const large = (src) => src.replace("w=800", "w=1400");
 const modalCaption = document.getElementById("modalCaption");
 const modalPrev = document.getElementById("modalPrev");
 const modalNext = document.getElementById("modalNext");
@@ -752,7 +761,7 @@ function showSlide(n) {
   if (!currentGallery.length) return;
   currentSlide = (n + currentGallery.length) % currentGallery.length;
   const g = currentGallery[currentSlide];
-  modalImg.src = large(g.src);
+  modalImg.src = g.src;
   modalImg.alt = g.alt;
   const count = currentGallery.length > 1 ? `${currentSlide + 1} / ${currentGallery.length} · ` : "";
   modalCaption.textContent = g.caption ? count + g.caption : "";
@@ -766,6 +775,9 @@ function showSlide(n) {
 function modalBodyHTML(p) {
   const list = (items) => `<ul>${items.map((f) => `<li>${f}</li>`).join("")}</ul>`;
   let html = "";
+  if (p.popupStats) {
+    html += `<dl class="card-stats modal-stats">${p.popupStats.map((s) => `<div><dt>${s.value}</dt><dd>${s.label}</dd></div>`).join("")}</dl>`;
+  }
   if (p.context) {
     html += `<h4>Context</h4><dl class="modal-context">${p.context.map((c) => `<div><dt>${c.label}</dt><dd>${c.value}</dd></div>`).join("")}</dl>`;
   } else if (p.description) {
@@ -822,7 +834,7 @@ function openModal(p, view = "details") {
   if (view === "video") renderVideo(p);
   else modalVideo.innerHTML = "";
   const gallery = galleryOf(p);
-  currentGallery = gallery.length ? gallery : [{ src: p.image, caption: "", alt: p.imageAlt || p.title }];
+  currentGallery = gallery.length ? gallery : p.image ? [{ src: p.image, caption: "", alt: p.imageAlt || p.title }] : [];
   modalThumbs.innerHTML =
     gallery.length > 1
       ? gallery

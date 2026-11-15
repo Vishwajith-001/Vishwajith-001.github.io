@@ -486,6 +486,9 @@ main:focus { outline: none; }
 .card-img-btn:focus-visible { outline-offset: -3px; }
 .card-badge { pointer-events: none; }
 /* Whole (uncropped) photo, with a blurred copy of it filling the sides */
+/* No photo (or it failed to load): a plain image icon instead of a stock picture */
+.card-img-none { display: grid; place-items: center; background: var(--bg-alt); }
+.card-img-none::after { content: "\f03e"; font-family: "Font Awesome 6 Free"; font-weight: 900; font-size: 2rem; color: var(--border-strong); }
 .card-img-contain { background: #000; }
 .card-img-contain::before {
   content: "";
@@ -792,6 +795,8 @@ a.info-item:hover { color: var(--accent); }
 .video-facade:hover .video-play { transform: translate(-50%, -50%) scale(1.08); background: #dc2626; }
 .modal-media { position: relative; }
 #modalImg { width: 100%; aspect-ratio: 16 / 9; object-fit: contain; background: #fff; }
+/* Result tiles at the top of a project's Details popup */
+.modal-stats { margin: 4px 0 22px; }
 .modal-nav {
   position: absolute;
   top: 50%;
@@ -932,6 +937,11 @@ a.info-item:hover { color: var(--accent); }
   }
   .nav-links.open { transform: none; }
   .nav-links a { padding: 12px 16px; border-radius: 10px; }
+  /* Touch targets at least 44px tall on small screens */
+  .nav-links a { display: flex; align-items: center; min-height: 44px; }
+  .filter-btn { min-height: 44px; }
+  .card-links button,
+  .card-links a { min-height: 44px; }
   .section { padding: 76px 0; }
   .hero { min-height: 0; padding-top: calc(var(--nav-h) + 32px); }
   /* CV bar: icon-only secondary buttons so everything fits on one row */
